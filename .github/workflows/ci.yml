@@ -1,0 +1,39 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite
+          coverage: none
+      - run: composer install --working-dir=backend --no-interaction --prefer-dist
+      - run: cp backend/.env.example backend/.env && php backend/artisan key:generate
+      - run: ./vendor/bin/pint --test
+        working-directory: backend
+      - run: php artisan test
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --dir frontend --frozen-lockfile
+      - run: pnpm --dir frontend typecheck
+      - run: pnpm --dir frontend lint
+      - run: pnpm --dir frontend test
+      - run: pnpm --dir frontend build

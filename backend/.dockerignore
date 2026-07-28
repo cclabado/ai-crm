@@ -1,0 +1,5 @@
+.env
+.env.docker
+vendor
+storage/logs/*
+.phpunit.result.cache
