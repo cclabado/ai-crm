@@ -21,6 +21,10 @@ import RecordEngagementDrawer from '../components/engagement/RecordEngagementDra
 
 type RecordValue = string | number | boolean | null
 type ModuleRecord = Record<string, RecordValue> & { id?: string; public_id?: string }
+type PaginatedModuleResponse = {
+  data: ModuleRecord[]
+  meta?: { current_page: number; last_page: number; total: number }
+}
 type Field = {
   key: string
   label: string
@@ -397,17 +401,18 @@ export default function OperationalModulePage({ module }: { module: keyof typeof
   const config = configs[module]
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const deferredSearch = useDeferredValue(search)
   const [dialog, setDialog] = useState<ModuleRecord | null | undefined>()
   const [detail, setDetail] = useState<ModuleRecord | null>(null)
   const importInput = useRef<HTMLInputElement>(null)
   const [transferMessage, setTransferMessage] = useState('')
   const query = useQuery({
-    queryKey: [module, deferredSearch],
+    queryKey: [module, deferredSearch, page],
     queryFn: async () =>
       (
-        await api.get<{ data: ModuleRecord[] }>(`/api/v1/${module}`, {
-          params: { search: deferredSearch || undefined },
+        await api.get<PaginatedModuleResponse>(`/api/v1/${module}`, {
+          params: { search: deferredSearch || undefined, page },
         })
       ).data,
     placeholderData: keepPreviousData,
@@ -499,7 +504,10 @@ export default function OperationalModulePage({ module }: { module: keyof typeof
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(1)
+            }}
             placeholder={`Search ${config.title.toLowerCase()}...`}
             className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm"
           />
@@ -524,73 +532,99 @@ export default function OperationalModulePage({ module }: { module: keyof typeof
           />
         )}
         {!!query.data?.data.length && (
-          <table className="w-full min-w-[700px] overflow-hidden rounded-xl border border-slate-200 bg-white text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                {config.columns.map((column) => (
-                  <th key={column.key} className="px-4 py-3">
-                    {column.label}
-                  </th>
-                ))}
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {query.data.data.map((record) => (
-                <tr key={String(record.public_id ?? record.id)} className="hover:bg-slate-50">
+          <>
+            <table className="w-full min-w-[700px] overflow-hidden rounded-xl border border-slate-200 bg-white text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <tr>
                   {config.columns.map((column) => (
-                    <td key={column.key} className="max-w-64 truncate px-4 py-3 text-slate-700">
-                      {typeof record[column.key] === 'boolean'
-                        ? record[column.key]
-                          ? 'Yes'
-                          : 'No'
-                        : String(record[column.key] ?? '—')}
-                    </td>
+                    <th key={column.key} className="px-4 py-3">
+                      {column.label}
+                    </th>
                   ))}
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      {(['quotations', 'invoices'] as string[]).includes(module) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Download PDF"
-                          onClick={() => void downloadPdf(record)}
-                        >
-                          <FileDown className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {(['companies', 'contacts', 'tickets'] as string[]).includes(module) && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="View record details"
-                          onClick={() => setDetail(record)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Edit record"
-                        onClick={() => setDialog(record)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Archive record"
-                        onClick={() => window.confirm('Archive this record?') && remove.mutate(record)}
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {query.data.data.map((record) => (
+                  <tr key={String(record.public_id ?? record.id)} className="hover:bg-slate-50">
+                    {config.columns.map((column) => (
+                      <td key={column.key} className="max-w-64 truncate px-4 py-3 text-slate-700">
+                        {typeof record[column.key] === 'boolean'
+                          ? record[column.key]
+                            ? 'Yes'
+                            : 'No'
+                          : String(record[column.key] ?? '—')}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1">
+                        {(['quotations', 'invoices'] as string[]).includes(module) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Download PDF"
+                            onClick={() => void downloadPdf(record)}
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {(['companies', 'contacts', 'tickets'] as string[]).includes(module) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="View record details"
+                            onClick={() => setDetail(record)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Edit record"
+                          onClick={() => setDialog(record)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Archive record"
+                          onClick={() => window.confirm('Archive this record?') && remove.mutate(record)}
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+              <span>
+                Showing page {query.data.meta?.current_page ?? page} of {query.data.meta?.last_page ?? page}
+                {query.data.meta?.total !== undefined ? ` · ${query.data.meta.total} total` : ''}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={page <= 1 || query.isFetching}
+                  onClick={() => setPage((value) => Math.max(1, value - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={page >= (query.data.meta?.last_page ?? page) || query.isFetching}
+                  onClick={() => setPage((value) => value + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </div>
       {dialog !== undefined && (
