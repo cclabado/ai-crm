@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LoaderCircle, Mail, Plus, Send, X } from 'lucide-react'
+import { LoaderCircle, Mail, Plus, RefreshCw, Send, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
@@ -9,7 +9,7 @@ interface Thread {
   public_id: string
   subject: string
   last_message_at: string
-  messages: Array<{ body_text: string; to_addresses: string[]; status: string }>
+  messages: Array<{ public_id: string; body_text: string; to_addresses: string[]; status: string }>
 }
 export default function EmailPage() {
   const client = useQueryClient()
@@ -36,6 +36,10 @@ export default function EmailPage() {
       setForm({ to: '', subject: '', body: '' })
       setNotice('Email queued for delivery.')
     },
+  })
+  const retry = useMutation({
+    mutationFn: (messageId: string) => api.post(`/api/v1/email/messages/${messageId}/retry`),
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: ['email-threads'] }); setNotice('Email queued for retry.') },
   })
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -77,7 +81,8 @@ export default function EmailPage() {
                 {new Date(thread.last_message_at).toLocaleString()}
               </time>
             </div>
-            <p className="mt-2 line-clamp-2 text-sm text-slate-600">{thread.messages[0]?.body_text}</p>
+            <div className="mt-2 flex items-start justify-between gap-3"><p className="line-clamp-2 text-sm text-slate-600">{thread.messages[0]?.body_text}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase ${thread.messages[0]?.status === 'failed' ? 'bg-red-50 text-red-700' : thread.messages[0]?.status === 'sent' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{thread.messages[0]?.status ?? 'unknown'}</span></div>
+            {thread.messages[0]?.status === 'failed' && <Button variant="secondary" size="sm" className="mt-3" onClick={() => retry.mutate(thread.messages[0]?.public_id ?? '')} disabled={retry.isPending}><RefreshCw className="h-3.5 w-3.5" /> Retry delivery</Button>}
           </article>
         ))}
       </div>

@@ -52,4 +52,14 @@ class CommunicationController extends Controller
 
         return response()->json(['data' => $thread, 'message' => 'Email queued for delivery.'], Response::HTTP_CREATED);
     }
+
+    public function retryEmail(Request $request, string $message): JsonResponse
+    {
+        abort_unless($request->user()->can('email.send'), 403);
+        $email = EmailMessage::query()->where('public_id', $message)->where('status', 'failed')->firstOrFail();
+        $email->update(['status' => 'queued']);
+        SendCrmEmail::dispatch($email->getKey(), $email->thread->organization_id, $email->thread->subject)->afterCommit();
+
+        return response()->json(['data' => ['status' => 'queued'], 'message' => 'Email queued for retry.']);
+    }
 }

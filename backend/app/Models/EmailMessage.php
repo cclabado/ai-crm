@@ -12,4 +12,9 @@ class EmailMessage extends Model
     protected $guarded = ['id'];
 
     protected $casts = ['to_addresses' => 'array', 'cc_addresses' => 'array', 'sent_at' => 'datetime'];
+
+    public function thread()
+    {
+        return $this->belongsTo(EmailThread::class, 'email_thread_id');
+    }
 }

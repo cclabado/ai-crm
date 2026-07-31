@@ -87,6 +87,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             Route::get('/email/threads', [CommunicationController::class, 'emailThreads']);
             Route::get('/email/threads/{thread}', [CommunicationController::class, 'emailThread']);
             Route::post('/email/send', [CommunicationController::class, 'sendEmail']);
+            Route::post('/email/messages/{message}/retry', [CommunicationController::class, 'retryEmail']);
             Route::post('/documents/upload', [DocumentFileController::class, 'store']);
             Route::get('/documents/{document}/download', [DocumentFileController::class, 'download']);
             Route::get('/quotations/{quotation}/pdf', QuotationPdfController::class);
