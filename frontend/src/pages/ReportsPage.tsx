@@ -10,6 +10,8 @@ interface ReportData {
   leads_by_source: Array<{ label: string; total: number }>
   pipeline: Array<{ label: string; total: number; value: number }>
   monthly_sales: Array<{ label: string; value: number }>
+  sales_by_rep: Array<{ label: string; total: number; value: number }>
+  lead_aging: Array<{ label: string; total: number }>
   tasks: { total: number; completed: number; overdue: number }
 }
 
@@ -107,6 +109,8 @@ export default function ReportsPage() {
               <ChartCard title="Leads by source" data={report.data.leads_by_source} />
               <ChartCard title="Pipeline value" data={report.data.pipeline} dataKey="value" />
               <ChartCard title="Monthly won sales" data={report.data.monthly_sales} dataKey="value" />
+              <ChartCard title="Won sales by representative" data={report.data.sales_by_rep} dataKey="value" />
+              <ChartCard title="Lead aging" data={report.data.lead_aging} />
             </div>
           </>
         )}
