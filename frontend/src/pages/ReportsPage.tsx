@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Download, LoaderCircle } from 'lucide-react'
+import { Download, LoaderCircle, RotateCcw } from 'lucide-react'
+import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import Button from '../components/ui/Button'
 import { api } from '../lib/api'
@@ -44,12 +45,14 @@ function ChartCard({
 }
 
 export default function ReportsPage() {
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const report = useQuery({
-    queryKey: ['reports'],
-    queryFn: async () => (await api.get<{ data: ReportData }>('/api/v1/reports')).data.data,
+    queryKey: ['reports', dateFrom, dateTo],
+    queryFn: async () => (await api.get<{ data: ReportData }>('/api/v1/reports', { params: { date_from: dateFrom || undefined, date_to: dateTo || undefined } })).data.data,
   })
   const download = async (type: 'leads' | 'deals' | 'tasks') => {
-    const response = await api.get('/api/v1/reports/export', { params: { type }, responseType: 'blob' })
+    const response = await api.get('/api/v1/reports/export', { params: { type, date_from: dateFrom || undefined, date_to: dateTo || undefined }, responseType: 'blob' })
     const url = URL.createObjectURL(response.data)
     const link = document.createElement('a')
     link.href = url
@@ -66,6 +69,9 @@ export default function ReportsPage() {
             <p className="mt-0.5 text-sm text-slate-500">Live performance data from this organization.</p>
           </div>
           <div className="flex gap-2">
+            <input aria-label="Report start date" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="h-9 rounded-lg border border-slate-200 px-2 text-sm" />
+            <input aria-label="Report end date" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="h-9 rounded-lg border border-slate-200 px-2 text-sm" />
+            {(dateFrom || dateTo) && <Button variant="ghost" size="icon" aria-label="Clear report dates" onClick={() => { setDateFrom(''); setDateTo('') }}><RotateCcw className="h-4 w-4" /></Button>}
             {(['leads', 'deals', 'tasks'] as const).map((type) => (
               <Button key={type} variant="secondary" size="sm" onClick={() => void download(type)}>
                 <Download className="h-4 w-4" />
