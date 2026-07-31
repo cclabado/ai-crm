@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import OperationalModulePage from './OperationalModulePage'
 
 vi.mock('../lib/api', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }))
+vi.mock('../app/AuthContext', () => ({ useAuth: () => ({ currentOrganization: { currency: 'USD' } }) }))
 
 describe('OperationalModulePage', () => {
   beforeEach(() => {

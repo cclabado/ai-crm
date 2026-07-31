@@ -17,11 +17,21 @@ import { useDeferredValue, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
+import { useAuth } from '../app/AuthContext'
 import { api } from '../lib/api'
 import RecordEngagementDrawer from '../components/engagement/RecordEngagementDrawer'
 
 type RecordValue = string | number | boolean | null
 type ModuleRecord = Record<string, RecordValue> & { id?: string; public_id?: string }
+type CommerceItem = {
+  name: string
+  quantity: number
+  unit_price: number
+  discount_rate?: number
+  tax_rate?: number
+  discount_amount?: number
+  tax_amount?: number
+}
 type PaginatedModuleResponse = {
   data: ModuleRecord[]
   meta?: { current_page: number; last_page: number; total: number }
@@ -398,8 +408,91 @@ function RecordDialog({
   )
 }
 
+function CommerceDialog({
+  module,
+  record,
+  currency,
+  onClose,
+}: {
+  module: 'quotations' | 'invoices'
+  record: ModuleRecord | null
+  currency: string
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [error, setError] = useState('')
+  const [header, setHeader] = useState({
+    status: String(record?.status ?? 'draft'),
+    currency: String(record?.currency ?? currency),
+    date: String(record?.expires_at ?? record?.due_at ?? ''),
+    notes: String(record?.notes ?? ''),
+  })
+  const existingItems = (record as (ModuleRecord & { items?: CommerceItem[] }) | null)?.items ?? []
+  const [items, setItems] = useState<CommerceItem[]>(
+    existingItems.length ? existingItems.map((item) => ({ ...item })) : [{ name: '', quantity: 1, unit_price: 0 }],
+  )
+  const products = useQuery({
+    queryKey: ['products', 'commerce-builder'],
+    queryFn: async () => (await api.get<{ data: Array<{ name: string; unit_price: number; currency: string }> }>('/api/v1/products', { params: { per_page: 100 } })).data.data,
+  })
+  const totals = items.reduce(
+    (result, item) => {
+      const gross = item.quantity * item.unit_price
+      const discount = module === 'quotations' ? gross * ((item.discount_rate ?? 0) / 100) : item.discount_amount ?? 0
+      const tax = module === 'quotations' ? (gross - discount) * ((item.tax_rate ?? 0) / 100) : item.tax_amount ?? 0
+      result.subtotal += gross
+      result.discount += discount
+      result.tax += tax
+      result.total += gross - discount + tax
+      return result
+    },
+    { subtotal: 0, discount: 0, tax: 0, total: 0 },
+  )
+  const mutation = useMutation({
+    mutationFn: () => api[record ? 'patch' : 'post'](`/api/v1/${module}${record ? `/${record.public_id ?? record.id}` : ''}`, {
+      status: header.status,
+      currency: header.currency,
+      ...(module === 'quotations' ? { expires_at: header.date } : { due_at: header.date }),
+      notes: header.notes || null,
+      items: items.map((item) => ({ ...item, quantity: Number(item.quantity), unit_price: Number(item.unit_price) })),
+    }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [module] })
+      onClose()
+    },
+    onError: (reason) => setError(axios.isAxiosError(reason) ? (reason.response?.data?.message ?? 'The document could not be saved.') : 'The document could not be saved.'),
+  })
+  const updateItem = (index: number, patch: Partial<CommerceItem>) => setItems(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item))
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/45 sm:items-center sm:p-5" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section role="dialog" aria-modal="true" aria-labelledby="commerce-dialog-title" className="max-h-[94vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-4xl sm:rounded-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+          <div><h2 id="commerce-dialog-title" className="font-semibold text-slate-900">{record ? 'Edit' : 'Create'} {module === 'quotations' ? 'quotation' : 'invoice'}</h2><p className="text-xs text-slate-500">Add as many products or services as needed.</p></div>
+          <Button variant="ghost" size="icon" aria-label="Close form" onClick={onClose}><X className="h-4 w-4" /></Button>
+        </div>
+        <form className="space-y-5 p-5" onSubmit={(event) => { event.preventDefault(); setError(''); if (items.some((item) => !item.name.trim() || item.quantity <= 0)) { setError('Every line item needs a name and a quantity greater than zero.'); return } mutation.mutate() }}>
+          {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label><span className="mb-1.5 block text-sm font-medium text-slate-700">Status</span><select value={header.status} onChange={(event) => setHeader({ ...header, status: event.target.value })} className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm">{(module === 'quotations' ? ['draft', 'sent', 'accepted', 'rejected', 'expired'] : ['draft', 'sent', 'partial', 'paid', 'overdue', 'void']).map((status) => <option key={status}>{status}</option>)}</select></label>
+            <label><span className="mb-1.5 block text-sm font-medium text-slate-700">Currency</span><input required maxLength={3} value={header.currency} onChange={(event) => setHeader({ ...header, currency: event.target.value.toUpperCase() })} className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" /></label>
+            <label><span className="mb-1.5 block text-sm font-medium text-slate-700">{module === 'quotations' ? 'Expires' : 'Due date'}</span><input type="date" value={header.date} onChange={(event) => setHeader({ ...header, date: event.target.value })} className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" /></label>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Product or service</th><th className="w-28 px-3 py-2">Qty</th><th className="w-36 px-3 py-2">Unit price</th><th className="w-32 px-3 py-2">{module === 'quotations' ? 'Discount %' : 'Discount'}</th><th className="w-32 px-3 py-2">{module === 'quotations' ? 'Tax %' : 'Tax'}</th><th className="w-28 px-3 py-2 text-right">Line total</th><th /></tr></thead><tbody className="divide-y divide-slate-100">{items.map((item, index) => { const gross = item.quantity * item.unit_price; const discount = module === 'quotations' ? gross * ((item.discount_rate ?? 0) / 100) : item.discount_amount ?? 0; const tax = module === 'quotations' ? (gross - discount) * ((item.tax_rate ?? 0) / 100) : item.tax_amount ?? 0; return <tr key={index}><td className="px-3 py-2"><input required value={item.name} list="product-options" onChange={(event) => updateItem(index, { name: event.target.value })} className="h-9 w-full rounded border border-slate-200 px-2 text-sm" /></td><td className="px-3 py-2"><input required min="0.001" step="0.001" type="number" value={item.quantity} onChange={(event) => updateItem(index, { quantity: Number(event.target.value) })} className="h-9 w-full rounded border border-slate-200 px-2 text-sm" /></td><td className="px-3 py-2"><input required min="0" step="0.01" type="number" value={item.unit_price} onChange={(event) => updateItem(index, { unit_price: Number(event.target.value) })} className="h-9 w-full rounded border border-slate-200 px-2 text-sm" /></td><td className="px-3 py-2"><input min="0" step="0.01" type="number" value={module === 'quotations' ? item.discount_rate ?? 0 : item.discount_amount ?? 0} onChange={(event) => updateItem(index, module === 'quotations' ? { discount_rate: Number(event.target.value) } : { discount_amount: Number(event.target.value) })} className="h-9 w-full rounded border border-slate-200 px-2 text-sm" /></td><td className="px-3 py-2"><input min="0" step="0.01" type="number" value={module === 'quotations' ? item.tax_rate ?? 0 : item.tax_amount ?? 0} onChange={(event) => updateItem(index, module === 'quotations' ? { tax_rate: Number(event.target.value) } : { tax_amount: Number(event.target.value) })} className="h-9 w-full rounded border border-slate-200 px-2 text-sm" /></td><td className="px-3 py-2 text-right font-medium">{new Intl.NumberFormat(undefined, { style: 'currency', currency: header.currency || currency }).format(gross - discount + tax)}</td><td className="px-3 py-2"><Button type="button" variant="ghost" size="icon" aria-label={`Remove line ${index + 1}`} disabled={items.length === 1} onClick={() => setItems(items.filter((_, itemIndex) => itemIndex !== index))}><X className="h-4 w-4" /></Button></td></tr> })}</tbody></table>
+            <datalist id="product-options">{products.data?.map((product) => <option key={product.name} value={product.name}>{product.currency} {product.unit_price}</option>)}</datalist>
+          </div>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setItems([...items, { name: '', quantity: 1, unit_price: 0 }])}>Add line item</Button>
+          <div className="grid gap-4 sm:grid-cols-[1fr_240px]"><textarea rows={4} value={header.notes} onChange={(event) => setHeader({ ...header, notes: event.target.value })} placeholder="Notes or terms" className="w-full rounded-lg border border-slate-200 p-3 text-sm" /><div className="rounded-xl bg-slate-50 p-4 text-sm"><div className="flex justify-between"><span>Subtotal</span><span>{totals.subtotal.toFixed(2)}</span></div><div className="mt-1 flex justify-between"><span>Discount</span><span>-{totals.discount.toFixed(2)}</span></div><div className="mt-1 flex justify-between"><span>Tax</span><span>{totals.tax.toFixed(2)}</span></div><div className="mt-3 flex justify-between border-t border-slate-200 pt-3 font-bold"><span>Total</span><span>{new Intl.NumberFormat(undefined, { style: 'currency', currency: header.currency || currency }).format(totals.total)}</span></div></div></div>
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit" disabled={mutation.isPending}>{mutation.isPending && <LoaderCircle className="h-4 w-4 animate-spin" />}Save</Button></div>
+        </form>
+      </section>
+    </div>
+  )
+}
+
 export default function OperationalModulePage({ module }: { module: keyof typeof configs }) {
   const config = configs[module]
+  const { currentOrganization } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -629,9 +722,7 @@ export default function OperationalModulePage({ module }: { module: keyof typeof
           </>
         )}
       </div>
-      {dialog !== undefined && (
-        <RecordDialog module={module} config={config} record={dialog} onClose={() => setDialog(undefined)} />
-      )}
+      {dialog !== undefined && (module === 'quotations' || module === 'invoices' ? <CommerceDialog module={module} record={dialog} currency={currentOrganization?.currency ?? 'USD'} onClose={() => setDialog(undefined)} /> : <RecordDialog module={module} config={config} record={dialog} onClose={() => setDialog(undefined)} />)}
       {detail && (
         <RecordEngagementDrawer
           type={module === 'companies' ? 'company' : module === 'contacts' ? 'contact' : 'ticket'}
