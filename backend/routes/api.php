@@ -77,6 +77,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             Route::put('/settings/catalog/{type}', [SettingsController::class, 'catalog']);
             Route::put('/settings/notifications', [SettingsController::class, 'notificationPreferences']);
             Route::put('/settings/email', [SettingsController::class, 'email']);
+            Route::post('/settings/email/test', [SettingsController::class, 'testEmail']);
             Route::post('/ai/generate', [AiController::class, 'generate'])->middleware('throttle:10,1');
             Route::get('/notifications', [NotificationController::class, 'index']);
             Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read']);

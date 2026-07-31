@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import { LoaderCircle, Pencil, Plus, Power, Save, ShieldCheck } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import Button from '../components/ui/Button'
@@ -94,6 +95,7 @@ function SettingsForms({ initial }: { initial: SettingsData }) {
     password: '',
   })
   const [logoMessage, setLogoMessage] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
   const logoUpload = useMutation({
     mutationFn: (file: File) => {
       const form = new FormData()
@@ -124,6 +126,11 @@ function SettingsForms({ initial }: { initial: SettingsData }) {
   const saveEmail = useMutation({
     mutationFn: () => api.put('/api/v1/settings/email', email),
     onSuccess: refreshSettings,
+  })
+  const testEmail = useMutation({
+    mutationFn: () => api.post('/api/v1/settings/email/test'),
+    onSuccess: ({ data }) => setEmailMessage(data.message),
+    onError: (error) => setEmailMessage(axios.isAxiosError(error) ? (error.response?.data?.message ?? 'SMTP test failed.') : 'SMTP test failed.'),
   })
   const savePreferences = useMutation({
     mutationFn: () => api.put('/api/v1/settings/notifications', { preferences }),
@@ -226,6 +233,10 @@ function SettingsForms({ initial }: { initial: SettingsData }) {
             value={email.password}
             onChange={(value) => setEmail({ ...email, password: value })}
           />
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="secondary" size="sm" onClick={() => testEmail.mutate()} disabled={testEmail.isPending}>Test SMTP connection</Button>
+            {emailMessage && <span role="status" className="text-xs text-slate-500">{emailMessage}</span>}
+          </div>
         </SettingsCard>
         <CatalogCard title="Lead sources" endpoint="lead-sources" items={initial.lead_sources} />
         <CatalogCard title="Lead statuses" endpoint="lead-statuses" items={initial.lead_statuses} semantic />

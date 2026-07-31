@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -127,6 +128,32 @@ class SettingsController extends Controller
         }
 
         return response()->json(['data' => ['configured' => true], 'message' => 'Email settings stored securely.']);
+    }
+
+    public function testEmail(Request $request, CurrentOrganization $current): JsonResponse
+    {
+        abort_unless($request->user()->can('settings.manage'), 403);
+        $settings = Setting::query()->where('organization_id', $current->id())->where('group', 'email')->pluck('value', 'key');
+        abort_if(blank($settings['host'] ?? null) || blank($settings['from_address'] ?? null), 422, 'Save complete SMTP settings before sending a test email.');
+        try {
+            config()->set([
+                'mail.default' => 'smtp',
+                'mail.mailers.smtp.host' => $settings['host'],
+                'mail.mailers.smtp.port' => (int) ($settings['port'] ?? 587),
+                'mail.mailers.smtp.encryption' => $settings['encryption'] ?? 'tls',
+                'mail.mailers.smtp.username' => $settings['username'] ?? null,
+                'mail.mailers.smtp.password' => filled($settings['password'] ?? null) ? Crypt::decryptString($settings['password']) : null,
+                'mail.from.address' => $settings['from_address'],
+                'mail.from.name' => $settings['from_name'] ?? $current->get()?->name,
+            ]);
+            Mail::raw('This is a test email from your CRM email settings.', fn ($message) => $message->to($request->user()->email)->subject('CRM email settings test'));
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json(['message' => 'SMTP connection failed. Check the host, port, encryption, and credentials.'], 422);
+        }
+
+        return response()->json(['data' => ['sent_to' => $request->user()->email], 'message' => 'Test email sent successfully.']);
     }
 
     private function saveCatalog(string $model, array $data, array $defaults): object
