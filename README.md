@@ -83,6 +83,8 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 See [API documentation](docs/API.md), [database ERD](docs/ERD.md), and [contribution guide](CONTRIBUTING.md).
 
+See the [production operations runbook](docs/OPERATIONS.md) for backups, logging, storage security, health checks, and release procedures.
+
 ## AI integration
 
 AI is disabled by default. An administrator with `ai.configure` can select an OpenAI-compatible base URL/provider/model, set a daily limit, and provide an API key. Keys are encrypted with Laravel's application key and never returned. The assistant supports follow-up drafts, history and meeting summaries, next-action suggestions, proposal text, lead priority, and sentiment. The provider adapter uses the compatible chat-completions contract with authenticated requests, bounded timeouts/retries, safe errors, and request logs. Mock mode is intended for local demonstrations and tests. Core CRM requests never depend on AI availability.
