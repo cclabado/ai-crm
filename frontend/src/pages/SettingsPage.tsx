@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { LoaderCircle, Plus, Save, ShieldCheck } from 'lucide-react'
+import { LoaderCircle, Pencil, Plus, Power, Save, ShieldCheck } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import Button from '../components/ui/Button'
 import { useAuth } from '../app/AuthContext'
@@ -297,35 +297,64 @@ function CatalogCard({
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [kind, setKind] = useState('open')
+  const [editing, setEditing] = useState<CatalogItem | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editKind, setEditKind] = useState('open')
   const mutation = useMutation({
     mutationFn: () =>
       api.put(`/api/v1/settings/catalog/${endpoint}`, {
-        name,
+        id: editing?.id,
+        name: editing ? editName : name,
         pipeline_id: pipelineId,
-        position: items.length,
-        semantic_type: kind,
-        probability: kind === 'won' ? 100 : 0,
-        is_active: true,
+        position: editing?.position ?? items.length,
+        semantic_type: editing ? editKind : kind,
+        probability: editing ? (editKind === 'won' ? 100 : editKind === 'lost' ? 0 : editing.probability ?? 0) : kind === 'won' ? 100 : 0,
+        is_active: editing?.is_active ?? true,
       }),
     onSuccess: async () => {
       setName('')
+      setEditing(null)
       await queryClient.invalidateQueries({ queryKey: ['settings'] })
     },
   })
+  const toggleMutation = useMutation({
+    mutationFn: (item: CatalogItem) => api.put(`/api/v1/settings/catalog/${endpoint}`, {
+      id: item.id,
+      name: item.name,
+      pipeline_id: pipelineId,
+      position: item.position,
+      semantic_type: item.semantic_type ?? 'open',
+      probability: item.probability ?? 0,
+      is_active: !item.is_active,
+    }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+  })
+  const toggleActive = (item: CatalogItem) => {
+    toggleMutation.mutate(item)
+  }
   return (
     <SettingsCard title={title} mutation={mutation} onSubmit={() => mutation.mutate()}>
-      <div className="flex flex-wrap gap-2">
+      <div className="space-y-2">
         {items.map((item) => (
-          <span
-            key={item.id}
-            className="rounded-full border border-slate-200 px-3 py-1 text-xs"
-            style={{ borderColor: item.color }}
-          >
-            {item.name}
-            {item.probability !== undefined ? ` · ${item.probability}%` : ''}
-          </span>
+          <div key={item.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs">
+            <span className={`h-2 w-2 rounded-full ${item.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+            <span className="min-w-0 flex-1 truncate">{item.name}{item.probability !== undefined ? ` · ${item.probability}%` : ''}</span>
+            <Button type="button" variant="ghost" size="icon" aria-label={`Edit ${item.name}`} onClick={() => { setEditing(item); setEditName(item.name); setEditKind(item.semantic_type ?? 'open') }}><Pencil className="h-3.5 w-3.5" /></Button>
+            <Button type="button" variant="ghost" size="icon" aria-label={`${item.is_active ? 'Deactivate' : 'Activate'} ${item.name}`} onClick={() => toggleActive(item)}><Power className={`h-3.5 w-3.5 ${item.is_active ? 'text-emerald-600' : 'text-slate-400'}`} /></Button>
+          </div>
         ))}
       </div>
+      {editing && (
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+          <p className="mb-2 text-xs font-semibold text-blue-800">Edit {editing.name}</p>
+          <div className="flex gap-2">
+            <input required value={editName} onChange={(event) => setEditName(event.target.value)} className={inputClass} />
+            {semantic && <select aria-label="Edit semantic type" value={editKind} onChange={(event) => setEditKind(event.target.value)} className={`${inputClass} max-w-32`}>{semanticTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}
+            <Button type="button" size="sm" onClick={() => mutation.mutate()}>Save</Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
       <div className="flex gap-2">
         <input
           required
