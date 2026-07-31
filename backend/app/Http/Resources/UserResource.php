@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             'avatar_url' => $this->avatar_path ? asset('storage/'.$this->avatar_path) : null,
             'status' => $this->status,
             'roles' => $this->whenLoaded('roles', fn () => $this->roles->pluck('name')->values()),
+            'permissions' => auth()->check() ? $this->getAllPermissions()->pluck('name')->values() : [],
             'last_login_at' => $this->last_login_at?->toIso8601String(),
         ];
     }

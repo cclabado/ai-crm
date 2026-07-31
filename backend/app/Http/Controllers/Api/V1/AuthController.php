@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\PermissionRegistrar;
 
 class AuthController extends Controller
 {
@@ -29,6 +30,7 @@ class AuthController extends Controller
         }
 
         $request->session()->regenerate();
+        $this->setOrganizationPermissions($user, $request);
         $user->forceFill(['last_login_at' => now()])->save();
 
         return response()->json([
@@ -42,6 +44,8 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
+        $this->setOrganizationPermissions($request->user(), $request);
+
         return response()->json([
             'data' => [
                 'user' => new UserResource($request->user()),
@@ -49,6 +53,17 @@ class AuthController extends Controller
                 'current_organization' => $request->session()->get('current_organization'),
             ],
         ]);
+    }
+
+    private function setOrganizationPermissions(User $user, Request $request): void
+    {
+        $publicId = $request->session()->get('current_organization');
+        $organization = $user->organizations()->wherePivot('status', 'active')->when($publicId, fn ($query) => $query->where('organizations.public_id', $publicId))->first()
+            ?? $user->organizations()->wherePivot('status', 'active')->first();
+        if ($organization) {
+            app(PermissionRegistrar::class)->setPermissionsTeamId($organization->getKey());
+            $request->session()->put('current_organization', $organization->public_id);
+        }
     }
 
     public function logout(Request $request): JsonResponse

@@ -18,6 +18,7 @@ export interface User {
   avatar_url: string | null
   status: string
   roles?: string[]
+  permissions?: string[]
   last_login_at: string | null
 }
 

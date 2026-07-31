@@ -23,47 +23,47 @@ import { useAuth } from '../../app/AuthContext'
 import { cn } from '../../lib/cn'
 
 const sections = [
-  { label: '', items: [{ to: '/dashboard', label: 'Dashboard', icon: BarChart3 }] },
+  { label: '', items: [{ to: '/dashboard', label: 'Dashboard', icon: BarChart3, permission: 'dashboard.view' }] },
   {
     label: 'Sales',
     items: [
-      { to: '/leads', label: 'Leads', icon: Target },
-      { to: '/companies', label: 'Customers', icon: Building2 },
-      { to: '/contacts', label: 'Contacts', icon: Contact },
-      { to: '/deals', label: 'Opportunities', icon: Activity },
-      { to: '/pipeline', label: 'Sales Pipeline', icon: Kanban },
+      { to: '/leads', label: 'Leads', icon: Target, permission: 'leads.view' },
+      { to: '/companies', label: 'Customers', icon: Building2, permission: 'companies.view' },
+      { to: '/contacts', label: 'Contacts', icon: Contact, permission: 'contacts.view' },
+      { to: '/deals', label: 'Opportunities', icon: Activity, permission: 'deals.view' },
+      { to: '/pipeline', label: 'Sales Pipeline', icon: Kanban, permission: 'deals.view' },
     ],
   },
   {
     label: 'Productivity',
     items: [
-      { to: '/tasks', label: 'Tasks', icon: CheckSquare },
-      { to: '/calendar', label: 'Calendar', icon: Calendar },
-      { to: '/activities', label: 'Activities', icon: Activity },
-      { to: '/email', label: 'Email', icon: Mail },
+      { to: '/tasks', label: 'Tasks', icon: CheckSquare, permission: 'tasks.view' },
+      { to: '/calendar', label: 'Calendar', icon: Calendar, permission: 'tasks.view' },
+      { to: '/activities', label: 'Activities', icon: Activity, permission: 'activities.view' },
+      { to: '/email', label: 'Email', icon: Mail, permission: 'email.view' },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { to: '/products', label: 'Products & Services', icon: Package },
-      { to: '/quotations', label: 'Quotes', icon: FileText },
-      { to: '/invoices', label: 'Invoices', icon: Receipt },
+      { to: '/products', label: 'Products & Services', icon: Package, permission: 'products.view' },
+      { to: '/quotations', label: 'Quotes', icon: FileText, permission: 'quotations.view' },
+      { to: '/invoices', label: 'Invoices', icon: Receipt, permission: 'invoices.view' },
     ],
   },
-  { label: 'Service', items: [{ to: '/support', label: 'Support Tickets', icon: LifeBuoy }] },
+  { label: 'Service', items: [{ to: '/support', label: 'Support Tickets', icon: LifeBuoy, permission: 'tickets.view' }] },
   {
     label: 'Analytics',
     items: [
-      { to: '/reports', label: 'Reports & Analytics', icon: BarChart3 },
-      { to: '/documents', label: 'Documents', icon: FolderOpen },
+      { to: '/reports', label: 'Reports & Analytics', icon: BarChart3, permission: 'reports.view' },
+      { to: '/documents', label: 'Documents', icon: FolderOpen, permission: 'documents.view' },
     ],
   },
   {
     label: 'Admin',
     items: [
-      { to: '/team', label: 'Team', icon: Users },
-      { to: '/settings', label: 'Settings', icon: Settings },
+      { to: '/team', label: 'Team', icon: Users, permission: 'users.view' },
+      { to: '/settings', label: 'Settings', icon: Settings, permission: 'settings.view' },
     ],
   },
 ]
@@ -75,7 +75,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, mobileOpen, onCloseMobile }: SidebarProps) {
-  const { currentOrganization } = useAuth()
+  const { currentOrganization, user } = useAuth()
   const companyName = currentOrganization?.name ?? 'CRM & Sales Pipeline'
 
   return (
@@ -128,7 +128,7 @@ export default function Sidebar({ collapsed, mobileOpen, onCloseMobile }: Sideba
                   {section.label}
                 </p>
               )}
-              {section.items.map(({ to, label, icon: Icon }) => (
+              {section.items.filter((item) => !user?.permissions || item.permission === undefined || user.permissions.includes(item.permission)).map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}
                   to={to}
