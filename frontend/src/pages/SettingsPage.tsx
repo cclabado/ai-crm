@@ -29,6 +29,7 @@ type CatalogItem = {
 type Pipeline = { public_id: string; name: string; stages: CatalogItem[] }
 type Preference = { event: string; in_app: boolean; email: boolean }
 type StoredSetting = { key: string; value: string | null; configured: boolean | null }
+type OperationsHealth = { database: { ok: boolean }; queue: { ok: boolean; driver: string }; storage: { ok: boolean }; scheduler: { ok: boolean; configured: boolean } }
 interface SettingsData {
   company: { name: string; logo_url?: string | null; currency: string; timezone: string; locale: string; date_format: string }
   settings: Record<string, StoredSetting[]>
@@ -80,6 +81,11 @@ export default function SettingsPage() {
 function SettingsForms({ initial }: { initial: SettingsData }) {
   const { refresh: refreshAuth } = useAuth()
   const queryClient = useQueryClient()
+  const health = useQuery({
+    queryKey: ['operations-health'],
+    queryFn: async () => (await api.get<{ data: OperationsHealth }>('/api/v1/health/operations')).data.data,
+    refetchInterval: 60_000,
+  })
   const [company, setCompany] = useState(initial.company)
   const [ai, setAi] = useState<SettingsData['ai'] & { api_key?: string }>({ ...initial.ai, api_key: '' })
   const emailValues = Object.fromEntries(
@@ -145,6 +151,10 @@ function SettingsForms({ initial }: { initial: SettingsData }) {
         </p>
       </div>
       <div className="grid gap-5 p-4 sm:p-5 xl:grid-cols-2">
+        <SettingsCard title="System health" mutation={undefined} onSubmit={() => undefined}>
+          {health.isLoading ? <LoaderCircle className="h-5 w-5 animate-spin text-blue-600" /> : health.isError ? <p role="alert" className="text-sm text-red-700">System health could not be loaded.</p> : health.data && <div className="grid gap-2 sm:grid-cols-2">{Object.entries(health.data).map(([name, value]) => <div key={name} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"><span className="capitalize text-slate-600">{name}</span><span className={value.ok ? 'font-medium text-emerald-600' : 'font-medium text-red-600'}>{value.ok ? 'Operational' : 'Needs attention'}</span></div>)}</div>}
+          <p className="text-xs text-slate-500">Queue driver: {health.data?.queue.driver ?? 'checking'}. Scheduler status reflects application configuration; run the scheduler process in production.</p>
+        </SettingsCard>
         <SettingsCard
           title="Company information"
           mutation={saveCompany}
@@ -505,7 +515,7 @@ function SettingsCard({
   title: string
   children: ReactNode
   onSubmit: () => void
-  mutation: { isPending: boolean; isError: boolean; isSuccess: boolean }
+  mutation?: { isPending: boolean; isError: boolean; isSuccess: boolean }
 }) {
   return (
     <form
@@ -517,17 +527,17 @@ function SettingsCard({
     >
       <h2 className="font-semibold text-slate-900">{title}</h2>
       {children}
-      {mutation.isError && (
+      {mutation?.isError && (
         <p role="alert" className="text-sm text-red-600">
           Changes could not be saved.
         </p>
       )}
-      {mutation.isSuccess && (
+      {mutation?.isSuccess && (
         <p role="status" className="text-sm text-emerald-600">
           Saved successfully.
         </p>
       )}
-      <Button type="submit" disabled={mutation.isPending}>
+      {mutation && <Button type="submit" disabled={mutation.isPending}>
         {mutation.isPending ? (
           <LoaderCircle className="h-4 w-4 animate-spin" />
         ) : title.includes('Lead') || title.includes('stages') ? (
@@ -536,7 +546,7 @@ function SettingsCard({
           <Save className="h-4 w-4" />
         )}
         {title.includes('Lead') || title.includes('stages') ? 'Add option' : 'Save changes'}
-      </Button>
+      </Button>}
     </form>
   )
 }

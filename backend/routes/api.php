@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\InvoicePdfController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\ModuleController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\OperationsHealthController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\PasswordController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -41,6 +42,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::middleware(['organization', 'audit'])->group(function (): void {
             Route::get('/health', fn () => response()->json(['data' => ['status' => 'ok']]));
+            Route::get('/health/operations', OperationsHealthController::class);
             Route::get('/search', GlobalSearchController::class);
             Route::get('/dashboard', DashboardController::class);
             Route::get('/users', [UserController::class, 'index']);
