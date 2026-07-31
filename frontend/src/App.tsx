@@ -19,6 +19,7 @@ const ActivitiesPage = lazy(() => import('./pages/ActivitiesPage'))
 const EmailPage = lazy(() => import('./pages/EmailPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const CalendarPage = lazy(() => import('./pages/CalendarPage'))
+const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage'))
 
 export default function App() {
   return (
@@ -41,8 +42,14 @@ export default function App() {
             <Route path="leads/*" element={<LeadsPage />} />
             <Route path="pipeline/*" element={<PipelinePage />} />
             <Route path="team/*" element={<TeamPage />} />
-            <Route path="companies/*" element={<OperationalModulePage module="companies" />} />
-            <Route path="contacts/*" element={<OperationalModulePage module="contacts" />} />
+            <Route path="companies">
+              <Route index element={<OperationalModulePage module="companies" />} />
+              <Route path=":recordId" element={<RecordDetailPage module="companies" />} />
+            </Route>
+            <Route path="contacts">
+              <Route index element={<OperationalModulePage module="contacts" />} />
+              <Route path=":recordId" element={<RecordDetailPage module="contacts" />} />
+            </Route>
             <Route path="tasks/*" element={<OperationalModulePage module="tasks" />} />
             <Route path="calendar/*" element={<CalendarPage />} />
             <Route path="products/*" element={<OperationalModulePage module="products" />} />

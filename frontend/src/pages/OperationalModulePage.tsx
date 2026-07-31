@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useDeferredValue, useRef, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import { api } from '../lib/api'
@@ -399,6 +400,7 @@ function RecordDialog({
 
 export default function OperationalModulePage({ module }: { module: keyof typeof configs }) {
   const config = configs[module]
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -573,7 +575,7 @@ export default function OperationalModulePage({ module }: { module: keyof typeof
                             variant="ghost"
                             size="icon"
                             aria-label="View record details"
-                            onClick={() => setDetail(record)}
+                            onClick={() => module === 'companies' || module === 'contacts' ? navigate(`/${module}/${record.public_id ?? record.id}`) : setDetail(record)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
