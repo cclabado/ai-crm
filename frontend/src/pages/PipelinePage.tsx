@@ -27,6 +27,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useAuth } from '../app/AuthContext'
@@ -411,6 +412,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 
 export default function PipelinePage() {
   const { currentOrganization } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -517,7 +519,7 @@ export default function PipelinePage() {
                   key={stage.id}
                   stage={stage}
                   currency={currentOrganization?.currency ?? 'USD'}
-                  onView={setDetail}
+                onView={(deal) => navigate(`/pipeline/deal/${deal.id}`)}
                 />
               ))}
             </div>

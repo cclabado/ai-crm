@@ -39,8 +39,14 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="leads/*" element={<LeadsPage />} />
-            <Route path="pipeline/*" element={<PipelinePage />} />
+            <Route path="leads">
+              <Route index element={<LeadsPage />} />
+              <Route path=":recordId" element={<RecordDetailPage module="leads" />} />
+            </Route>
+            <Route path="pipeline">
+              <Route index element={<PipelinePage />} />
+              <Route path="deal/:recordId" element={<RecordDetailPage module="deals" />} />
+            </Route>
             <Route path="team/*" element={<TeamPage />} />
             <Route path="companies">
               <Route index element={<OperationalModulePage module="companies" />} />

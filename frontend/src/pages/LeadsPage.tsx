@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import axios from 'axios'
 import { Archive, Building2, Eye, LoaderCircle, Mail, Pencil, Phone, Plus, Search, X } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useAuth } from '../app/AuthContext'
@@ -355,6 +356,7 @@ function LeadCard({
 
 export default function LeadsPage() {
   const { currentOrganization } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
@@ -482,7 +484,7 @@ export default function LeadsPage() {
               <LeadCard
                 key={lead.id}
                 lead={lead}
-                onDetails={() => setDetailLead(lead)}
+                onDetails={() => navigate(`/leads/${lead.id}`)}
                 onEdit={() => setDialogLead(lead)}
                 onArchive={() => {
                   if (window.confirm(`Archive ${lead.full_name}?`)) archive.mutate(lead)

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Building2, Contact, Eye, LoaderCircle, Mail, Phone } from 'lucide-react'
+import { ArrowLeft, Building2, Contact, Eye, LoaderCircle, Mail, Phone, Target, TrendingUp } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import Button from '../components/ui/Button'
@@ -18,20 +18,26 @@ const labels: Record<string, string> = {
   mobile: 'Mobile',
   status: 'Status',
   description: 'Description',
+  company_name: 'Company',
+  priority: 'Priority',
+  estimated_value: 'Estimated value',
+  value: 'Deal value',
+  probability: 'Probability',
+  expected_close_date: 'Expected close',
 }
 
-export default function RecordDetailPage({ module }: { module: 'companies' | 'contacts' }) {
+export default function RecordDetailPage({ module }: { module: 'companies' | 'contacts' | 'leads' | 'deals' }) {
   const { recordId } = useParams<{ recordId: string }>()
   const navigate = useNavigate()
   const [engagementOpen, setEngagementOpen] = useState(false)
-  const type = module === 'companies' ? 'company' : 'contact'
+  const type = module === 'companies' ? 'company' : module === 'contacts' ? 'contact' : module === 'leads' ? 'lead' : 'deal'
   const query = useQuery({
     queryKey: [module, recordId],
     queryFn: async () => (await api.get<{ data: DetailRecord }>(`/api/v1/${module}/${recordId}`)).data.data,
     enabled: Boolean(recordId),
   })
   const record = query.data
-  const title = module === 'companies' ? String(record?.name ?? 'Company') : `${record?.first_name ?? ''} ${record?.last_name ?? ''}`.trim()
+  const title = module === 'companies' || module === 'deals' ? String(record?.name ?? (module === 'companies' ? 'Company' : 'Deal')) : `${record?.full_name ?? `${record?.first_name ?? ''} ${record?.last_name ?? ''}`}`.trim()
 
   if (query.isLoading) {
     return <div className="flex min-h-64 items-center justify-center"><LoaderCircle className="h-7 w-7 animate-spin text-blue-600" /></div>
@@ -40,11 +46,15 @@ export default function RecordDetailPage({ module }: { module: 'companies' | 'co
     return <div role="alert" className="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">This record could not be loaded.</div>
   }
 
-  const icon = module === 'companies' ? Building2 : Contact
+  const icon = module === 'companies' ? Building2 : module === 'contacts' ? Contact : module === 'leads' ? Target : TrendingUp
   const Icon = icon
   const visibleFields = module === 'companies'
     ? ['industry', 'website', 'email', 'phone', 'status', 'description']
-    : ['job_title', 'email', 'phone', 'mobile', 'status', 'description']
+    : module === 'contacts'
+      ? ['job_title', 'email', 'phone', 'mobile', 'status', 'description']
+      : module === 'leads'
+        ? ['company_name', 'job_title', 'email', 'phone', 'priority', 'estimated_value', 'status', 'description']
+        : ['value', 'probability', 'expected_close_date', 'status', 'description']
 
   return (
     <div className="min-h-full bg-slate-50">
@@ -57,7 +67,7 @@ export default function RecordDetailPage({ module }: { module: 'companies' | 'co
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><Icon className="h-6 w-6" /></div>
             <div>
               <h1 className="text-xl font-bold text-slate-900">{title || 'Contact'}</h1>
-              <p className="mt-0.5 text-sm text-slate-500">{module === 'companies' ? 'Customer profile' : 'Contact profile'}</p>
+              <p className="mt-0.5 text-sm text-slate-500">{module === 'companies' ? 'Customer profile' : module === 'contacts' ? 'Contact profile' : module === 'leads' ? 'Lead profile' : 'Deal profile'}</p>
             </div>
           </div>
           <Button onClick={() => setEngagementOpen(true)}><Eye className="h-4 w-4" /> Open activity workspace</Button>
