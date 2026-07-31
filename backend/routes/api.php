@@ -72,6 +72,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             Route::get('/reports/export', [ReportController::class, 'export']);
             Route::get('/settings', [SettingsController::class, 'show']);
             Route::put('/settings', [SettingsController::class, 'update']);
+            Route::post('/settings/logo', [SettingsController::class, 'logo']);
             Route::put('/settings/ai', [SettingsController::class, 'updateAi']);
             Route::put('/settings/catalog/{type}', [SettingsController::class, 'catalog']);
             Route::put('/settings/notifications', [SettingsController::class, 'notificationPreferences']);

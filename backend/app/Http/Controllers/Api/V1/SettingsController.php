@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -70,6 +71,20 @@ class SettingsController extends Controller
         $config->save();
 
         return response()->json(['data' => ['has_api_key' => filled($config->encrypted_api_key)], 'message' => 'AI settings updated securely.']);
+    }
+
+    public function logo(Request $request, CurrentOrganization $current): JsonResponse
+    {
+        abort_unless($request->user()->can('settings.manage'), 403);
+        $data = $request->validate(['logo' => 'required|image|mimes:png,jpg,jpeg,webp|max:2048']);
+        $organization = $current->get();
+        if ($organization?->logo_path) {
+            Storage::disk('public')->delete($organization->logo_path);
+        }
+        $path = $data['logo']->store('organization-logos', 'public');
+        $organization?->update(['logo_path' => $path]);
+
+        return response()->json(['data' => ['logo_url' => asset('storage/'.$path)], 'message' => 'Company logo updated.']);
     }
 
     public function catalog(Request $request, string $type): JsonResponse

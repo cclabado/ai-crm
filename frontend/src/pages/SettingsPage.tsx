@@ -29,7 +29,7 @@ type Pipeline = { public_id: string; name: string; stages: CatalogItem[] }
 type Preference = { event: string; in_app: boolean; email: boolean }
 type StoredSetting = { key: string; value: string | null; configured: boolean | null }
 interface SettingsData {
-  company: { name: string; currency: string; timezone: string; locale: string; date_format: string }
+  company: { name: string; logo_url?: string | null; currency: string; timezone: string; locale: string; date_format: string }
   settings: Record<string, StoredSetting[]>
   lead_sources: CatalogItem[]
   lead_statuses: CatalogItem[]
@@ -93,6 +93,19 @@ function SettingsForms({ initial }: { initial: SettingsData }) {
     username: emailValues.username ?? '',
     password: '',
   })
+  const [logoMessage, setLogoMessage] = useState('')
+  const logoUpload = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData()
+      form.append('logo', file)
+      return api.post('/api/v1/settings/logo', form)
+    },
+    onSuccess: async () => {
+      setLogoMessage('Logo updated.')
+      await Promise.all([refreshAuth(), refreshSettings()])
+    },
+    onError: () => setLogoMessage('Upload failed. Use PNG, JPG, or WebP up to 2 MB.'),
+  })
   const existingPrefs = new Map(initial.notification_preferences.map((item) => [item.event, item]))
   const [preferences, setPreferences] = useState<Preference[]>(
     events.map((event) => existingPrefs.get(event) ?? { event, in_app: true, email: true }),
@@ -130,6 +143,27 @@ function SettingsForms({ initial }: { initial: SettingsData }) {
           mutation={saveCompany}
           onSubmit={() => saveCompany.mutate()}
         >
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3">
+            {initial.company.logo_url ? (
+              <img src={initial.company.logo_url} alt="Company logo" className="h-12 w-12 rounded object-contain" />
+            ) : (
+              <span className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-xs text-slate-400">Logo</span>
+            )}
+            <span className="text-sm text-slate-600">
+              Upload company logo
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) logoUpload.mutate(file)
+                  event.target.value = ''
+                }}
+              />
+            </span>
+          </label>
+          {logoMessage && <p role="status" className="text-xs text-slate-500">{logoMessage}</p>}
           <Field
             label="Company name"
             value={company.name}
