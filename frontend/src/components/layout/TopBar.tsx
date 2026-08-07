@@ -152,9 +152,6 @@ export default function TopBar({ collapsed, onToggleSidebar, onOpenMobile }: Top
             </div>
           )}
         </div>
-        <Button variant="ghost" size="icon" aria-label="Open AI chatbot" onClick={() => setAiOpen(true)}>
-          <Bot className="h-4 w-4" aria-hidden="true" />
-        </Button>
         <div className="relative">
           <Button
             variant="ghost"
@@ -271,6 +268,17 @@ export default function TopBar({ collapsed, onToggleSidebar, onOpenMobile }: Top
           )}
         </div>
       </div>
+      {!aiOpen && (
+        <Button
+          variant="primary"
+          size="icon"
+          aria-label="Open AI chatbot"
+          onClick={() => setAiOpen(true)}
+          className="fixed bottom-5 right-5 z-[79] h-14 w-14 rounded-full bg-violet-600 shadow-lg shadow-violet-900/25 hover:bg-violet-700"
+        >
+          <Bot className="h-6 w-6" aria-hidden="true" />
+        </Button>
+      )}
       {aiOpen && <AiChatbotDialog onClose={() => setAiOpen(false)} />}
     </header>
   )
