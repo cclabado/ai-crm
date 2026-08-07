@@ -20,6 +20,7 @@ const EmailPage = lazy(() => import('./pages/EmailPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const CalendarPage = lazy(() => import('./pages/CalendarPage'))
 const RecordDetailPage = lazy(() => import('./pages/RecordDetailPage'))
+const OpportunitiesPage = lazy(() => import('./pages/OpportunitiesPage'))
 
 export default function App() {
   return (
@@ -68,7 +69,7 @@ export default function App() {
             <Route path="activities/*" element={<ActivitiesPage />} />
             <Route path="email/*" element={<EmailPage />} />
             <Route path="profile/*" element={<ProfilePage />} />
-            <Route path="deals/*" element={<Navigate to="/pipeline" replace />} />
+            <Route path="deals" element={<OpportunitiesPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

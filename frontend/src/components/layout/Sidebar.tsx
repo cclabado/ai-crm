@@ -30,6 +30,7 @@ const sections = [
       { to: '/leads', label: 'Leads', icon: Target, permission: 'leads.view' },
       { to: '/companies', label: 'Customers', icon: Building2, permission: 'companies.view' },
       { to: '/contacts', label: 'Contacts', icon: Contact, permission: 'contacts.view' },
+      { to: '/deals', label: 'Opportunities', icon: Activity, permission: 'deals.view' },
       { to: '/pipeline', label: 'Sales Pipeline', icon: Kanban, permission: 'deals.view' },
     ],
   },
