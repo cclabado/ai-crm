@@ -4,7 +4,7 @@ import { useDeferredValue, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext'
 import Button from '../ui/Button'
-import AiAssistantDialog from '../ai/AiAssistantDialog'
+import AiChatbotDialog from '../ai/AiChatbotDialog'
 import { api } from '../../lib/api'
 
 interface TopBarProps {
@@ -152,7 +152,7 @@ export default function TopBar({ collapsed, onToggleSidebar, onOpenMobile }: Top
             </div>
           )}
         </div>
-        <Button variant="ghost" size="icon" aria-label="AI assistant" onClick={() => setAiOpen(true)}>
+        <Button variant="ghost" size="icon" aria-label="Open AI chatbot" onClick={() => setAiOpen(true)}>
           <Bot className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div className="relative">
@@ -271,7 +271,7 @@ export default function TopBar({ collapsed, onToggleSidebar, onOpenMobile }: Top
           )}
         </div>
       </div>
-      {aiOpen && <AiAssistantDialog onClose={() => setAiOpen(false)} />}
+      {aiOpen && <AiChatbotDialog onClose={() => setAiOpen(false)} />}
     </header>
   )
 }

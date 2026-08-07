@@ -19,7 +19,7 @@ class AiController extends Controller
     public function generate(Request $request, CurrentOrganization $current): JsonResponse
     {
         abort_unless($request->user()->can('ai.use'), 403);
-        $data = $request->validate(['feature' => 'required|in:follow_up_email,interaction_summary,meeting_summary,next_actions,proposal_description,lead_priority,sentiment', 'context' => 'required|string|max:20000']);
+        $data = $request->validate(['feature' => 'required|in:chat,follow_up_email,interaction_summary,meeting_summary,next_actions,proposal_description,lead_priority,sentiment', 'context' => 'required|string|max:20000']);
         $config = AiConfiguration::query()->where('organization_id', $current->id())->first();
         if (! $config?->is_enabled) {
             throw ValidationException::withMessages(['ai' => ['AI is disabled. Enable it in Settings before using this feature.']]);
@@ -53,6 +53,7 @@ class AiController extends Controller
 
         return match ($feature) {
             'follow_up_email' => "Subject: Following up\n\nHi there,\n\nThank you for your time. Based on our discussion about {$summary}, I’d be happy to help with the next steps.\n\nBest regards,",
+            'chat' => "I can help with CRM follow-ups, customer summaries, deal next steps, and proposal preparation. Based on your message: {$summary}",
             'next_actions' => "1. Confirm the customer's primary objective.\n2. Schedule the next follow-up.\n3. Share the relevant proposal and timeline.",
             'lead_priority' => 'Suggested priority: Medium. Review engagement, budget, authority, need, and timeline before finalizing.',
             'sentiment' => 'Sentiment: Neutral to positive. Validate this assessment against the full interaction history.',
@@ -71,7 +72,7 @@ class AiController extends Controller
             ->post($baseUrl.'/chat/completions', [
                 'model' => $config->model,
                 'messages' => [
-                    ['role' => 'system', 'content' => 'You are a concise CRM sales assistant. Do not invent customer facts. Return only the requested business content.'],
+                    ['role' => 'system', 'content' => 'You are a concise CRM chatbot for sales and support teams. Answer questions clearly, do not invent customer facts, and suggest safe next actions when useful.'],
                     ['role' => 'user', 'content' => "Feature: {$feature}\n\nCustomer context:\n{$context}"],
                 ],
                 'temperature' => 0.3,
